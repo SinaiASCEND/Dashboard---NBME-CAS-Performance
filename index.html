@@ -37,6 +37,27 @@
   .kpi .sub{font-size:12px;color:var(--muted);margin-top:2px}
   .kpi .sub.up{color:var(--good)}
   .kpi .val.v-good{color:var(--good)} .kpi .val.v-warn{color:var(--orange)}
+  .kpi.clickable{cursor:pointer;transition:box-shadow .12s,transform .12s,border-color .12s;position:relative}
+  .kpi.clickable:hover{border-color:var(--navy-soft);box-shadow:0 4px 14px rgba(13,42,92,.14);transform:translateY(-1px)}
+  .kpi.clickable:focus-visible{outline:2px solid var(--navy-soft);outline-offset:2px}
+  .kpi .drill-aff{margin-top:8px;font-size:10.5px;font-weight:700;color:var(--navy-soft);text-transform:uppercase;letter-spacing:.05em}
+  .modal-ov{position:fixed;inset:0;background:rgba(13,42,92,.42);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:40px 16px;overflow-y:auto}
+  .modal-ov.open{display:flex}
+  .modal{background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 18px 50px rgba(13,42,92,.30);overflow:hidden}
+  .modal-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  .modal-hd h3{margin:0;font-size:16px;color:var(--navy)}
+  .modal-hd .msub{font-size:12px;color:var(--muted);margin-top:3px}
+  .modal-x{border:0;background:#eef2f8;color:var(--navy);width:30px;height:30px;border-radius:8px;font-size:20px;cursor:pointer;flex:none;line-height:1}
+  .modal-x:hover{background:#e2e8f4}
+  .modal-bd{padding:14px 20px 20px;max-height:62vh;overflow-y:auto}
+  .modal-bd ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .modal-bd li{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fafbfe;border:1px solid var(--line);border-radius:8px;flex-wrap:wrap}
+  .modal-bd li .nm{font-weight:600;font-size:13.5px;flex:1}
+  .modal-bd li .grp{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:#eef2f8;padding:2px 7px;border-radius:5px}
+  .modal-bd li .reason{font-size:12px;color:var(--muted);flex-basis:100%}
+  .modal-bd .empty{font-size:13px;color:var(--muted);padding:8px 2px}
+  .pill.h{background:#d7e8fb;color:var(--navy)} .pill.s{background:#eef2f8;color:var(--muted)}
+  @media print{.modal-ov{display:none!important}}
   .topbar2{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;margin-bottom:4px}
   .outhint{font-size:12px;color:var(--muted);margin:8px 2px 0;max-width:760px}
   .hist{margin-top:6px}
@@ -551,6 +572,7 @@ function setCohortBanner(){
   document.body.style.backgroundColor=bg;
 }
 function render(){
+  DRILLS=[];
   state.sort = document.getElementById("sortsel").value;
   setCohortBanner();
   { const _x=document.getElementById("sortnote"); if(_x){_x.innerHTML="";_x.style.display="none";} }
@@ -561,18 +583,49 @@ function render(){
   state.year = document.getElementById("yearsel").value || rep().current;
   renderKPIs(); renderWatch(); renderTable();
 }
-function kpiHTML(c){ return `<div class="kpi"><div class="lab">${c.lab}</div><div class="val ${c.cls||''}">${c.val}</div><div class="sub ${c.up?'up':''}">${c.sub}</div></div>`; }
+let DRILLS=[];
+function kpiHTML(c){
+  const head=`<div class="lab">${c.lab}</div><div class="val ${c.cls||''}">${c.val}</div><div class="sub ${c.up?'up':''}">${c.sub}</div>`;
+  if(c.drill){
+    const i=DRILLS.push(c.drill)-1;
+    return `<div class="kpi clickable" role="button" tabindex="0" onclick="openDrill(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDrill(${i});}">${head}<div class="drill-aff">View list &rarr;</div></div>`;
+  }
+  return `<div class="kpi">${head}</div>`;
+}
+function openDrill(i){
+  const d=DRILLS[i]; if(!d) return;
+  document.getElementById("drill-title").textContent=d.title||"";
+  document.getElementById("drill-sub").textContent=d.sub||"";
+  const ul=document.getElementById("drill-list");
+  if(!d.items||!d.items.length){ ul.innerHTML=`<li class="empty">No content areas in this group for the selected period.</li>`; }
+  else { ul.innerHTML=d.items.map(it=>{
+    const pills=(it.pills||[]).map(p=>`<span class="pill ${p.cls||'net'}">${p.txt}</span>`).join("");
+    return `<li><span class="nm">${it.name}</span>${it.grp?`<span class="grp">${it.grp}</span>`:""}${pills}${it.reason?`<span class="reason">${it.reason}</span>`:""}</li>`;
+  }).join(""); }
+  document.getElementById("drill-ov").classList.add("open");
+}
+function closeDrill(){ document.getElementById("drill-ov").classList.remove("open"); }
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeDrill(); });
 function renderKPIs(){
   const r=rep(), y=state.year, su=r.summary[y], lbl=labelFor(state.exam,y);
   document.getElementById("cap-year").textContent = `${r.label} · ${lbl}`;
   document.getElementById("out-year").textContent = `${r.label} · ${lbl}`;
-  const nets = rowsFor("all").map(row=>vals(row,y).net);
-  const total=nets.length, above=nets.filter(n=>n>=10).length, onpar=nets.filter(n=>n>=0&&n<10).length, below=nets.filter(n=>n<0).length;
+  const allrows = rowsFor("all").map(row=>{const v=vals(row,y); return {name:row.name, group:row.group, l:v.l, s:v.s, h:v.h, net:v.net};});
+  const total=allrows.length;
+  const aboveRows=allrows.filter(x=>x.net>=10).sort((a,b)=>b.net-a.net);
+  const onparRows=allrows.filter(x=>x.net>=0&&x.net<10).sort((a,b)=>b.net-a.net);
+  const belowRows=allrows.filter(x=>x.net<0).sort((a,b)=>a.net-b.net);
+  const above=aboveRows.length, onpar=onparRows.length, below=belowRows.length;
+  const mk2=x=>({name:x.name, grp:GRPLABEL[x.group], pills:[{txt:`${x.l}% below`,cls:'l'},{txt:`${x.h}% above`,cls:'h'},{txt:`net ${x.net>0?'+':''}${x.net}`,cls:'net'}], reason:`${x.l}% below · ${x.s}% about the same · ${x.h}% above national`});
   const cap=[
-    {lab:"Content areas tracked", val:total, sub:"systems · disciplines · tasks"},
-    {lab:"Above national", val:above, sub:"net ≥ +10", cls:"v-good"},
-    {lab:"On par with national", val:onpar, sub:"net 0 to +9"},
-    {lab:"Below national", val:below, sub:"more students below than above", cls:"v-warn"}
+    {lab:"Content areas tracked", val:total, sub:"systems · disciplines · tasks",
+       drill:{title:`All content areas — ${lbl}`, sub:`${total} areas · net = % above − % below national`, items: allrows.slice().sort((a,b)=>a.net-b.net).map(mk2)}},
+    {lab:"Above national", val:above, sub:"net ≥ +10", cls:"v-good",
+       drill:{title:`Above national — ${lbl}`, sub:`${above} area${above===1?'':'s'} · net ≥ +10`, items: aboveRows.map(mk2)}},
+    {lab:"On par with national", val:onpar, sub:"net 0 to +9",
+       drill:{title:`On par with national — ${lbl}`, sub:`${onpar} area${onpar===1?'':'s'} · net 0 to +9`, items: onparRows.map(mk2)}},
+    {lab:"Below national", val:below, sub:"more students below than above", cls:"v-warn",
+       drill:{title:`Below national — ${lbl}`, sub:`${below} area${below===1?'':'s'} · more students scored below than above national`, items: belowRows.map(mk2)}}
   ];
   document.getElementById("cap-kpis").innerHTML = cap.map(kpiHTML).join("");
   const out=[
@@ -690,12 +743,20 @@ function renderShelf(){
   document.getElementById("cap-year").textContent=`${cl} shelf · ${lbl}`;
   document.getElementById("out-year").textContent=`${cl} shelf · ${lbl}`;
   document.getElementById("outhint").textContent="EPC = equated percent correct (share of content mastered). Differences shown are School − National; NBME flags only statistically meaningful gaps with ★, so small unflagged differences are within normal cohort noise.";
-  const below=areas.filter(a=>a.diff<0).length, on=areas.filter(a=>a.diff===0).length, above=areas.filter(a=>a.diff>0).length, fl=areas.filter(a=>a.sig).length;
+  const belowA=areas.filter(a=>a.diff<0).sort((a,b)=>a.diff-b.diff);
+  const onaboveA=areas.filter(a=>a.diff>=0).sort((a,b)=>b.diff-a.diff);
+  const flA=areas.filter(a=>a.sig).sort((a,b)=>a.diff-b.diff);
+  const below=belowA.length, on=areas.filter(a=>a.diff===0).length, above=areas.filter(a=>a.diff>0).length, fl=flA.length;
+  const mkS=a=>({name:a.area, grp:a.section||"", pills:[{txt:`${a.school} vs ${a.nat} EPC`,cls:'l'},{txt:`${a.diff>0?'+':''}${a.diff}${sigStar(a.sig)}`,cls:'net'}], reason:`${a.pct} of items · ${a.diff<0?'below':(a.diff>0?'above':'level with')} national${a.sig?' · statistically flagged gap':''}`});
   const cap=[
-    {lab:"Content areas tracked", val:areas.length, sub:"organ systems · tasks · sites"},
-    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn"},
-    {lab:"On par / above", val:on+above, sub:"School ≥ national"},
-    {lab:"Statistically flagged", val:fl, sub:"meaningful gap (★/★★)", cls: fl?"v-warn":""}
+    {lab:"Content areas tracked", val:areas.length, sub:"organ systems · tasks · sites",
+       drill:{title:`${cl} shelf — all content areas · ${lbl}`, sub:`${areas.length} areas · difference = School − National EPC`, items: areas.slice().sort((a,b)=>a.diff-b.diff).map(mkS)}},
+    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn",
+       drill:{title:`${cl} shelf — below national · ${lbl}`, sub:`${below} area${below===1?'':'s'} · School EPC < national`, items: belowA.map(mkS)}},
+    {lab:"On par / above", val:on+above, sub:"School ≥ national",
+       drill:{title:`${cl} shelf — on par or above · ${lbl}`, sub:`${on+above} area${(on+above)===1?'':'s'} · School ≥ national EPC`, items: onaboveA.map(mkS)}},
+    {lab:"Statistically flagged", val:fl, sub:"meaningful gap (★/★★)", cls: fl?"v-warn":"",
+       drill:{title:`${cl} shelf — statistically flagged · ${lbl}`, sub:`${fl} area${fl===1?'':'s'} · NBME-flagged meaningful gap`, items: flA.map(mkS)}}
   ];
   document.getElementById("cap-kpis").innerHTML=cap.map(kpiHTML).join("");
   const dT=(t.mean!=null&&t.cmean!=null)?(t.mean-t.cmean):null;
@@ -824,13 +885,19 @@ function renderCBSE(){
   document.getElementById("cap-year").textContent=`CBSE · ${lbl}`;
   document.getElementById("out-year").textContent=`CBSE · ${lbl}`;
   document.getElementById("outhint").textContent="The CBSE is a Step 1\u2013style practice exam scored in Step 1's own content framework; the comparison group is national USMLE Step 1 first-takers on the CBSE, so each School \u2212 National gap is a Step 1\u2013readiness signal. Students sit it during preclerkship, so a gap to first-takers is expected — read it as trajectory, and don't over-read areas built on few items.";
-  const below=areas.filter(a=>a.diff<0).length, on=areas.filter(a=>a.diff>=0).length;
+  const belowA=areas.filter(a=>a.diff<0).sort((a,b)=>a.diff-b.diff);
+  const onaboveA=areas.filter(a=>a.diff>=0).sort((a,b)=>b.diff-a.diff);
+  const below=belowA.length, on=onaboveA.length;
   const widest=areas.slice().sort((a,b)=>a.diff-b.diff)[0];
   const meanGap=(areas.reduce((s,a)=>s+a.diff,0)/areas.length).toFixed(1);
+  const mkC=a=>({name:a.area, grp:a.section||"", pills:[{txt:`${a.school} vs ${a.nat} EPC`,cls:'l'},{txt:`${a.diff>0?'+':''}${a.diff}`,cls:'net'}], reason:`${a.pct} of items · ${a.diff<0?'below':(a.diff>0?'above':'level with')} national Step 1 first-takers`});
   document.getElementById("cap-kpis").innerHTML=[
-    {lab:"Content areas tracked", val:areas.length, sub:"tasks · systems · disciplines"},
-    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn"},
-    {lab:"On par or above", val:on, sub:"School \u2265 national"},
+    {lab:"Content areas tracked", val:areas.length, sub:"tasks · systems · disciplines",
+       drill:{title:`CBSE — all content areas · ${lbl}`, sub:`${areas.length} areas · difference = School − National EPC`, items: areas.slice().sort((a,b)=>a.diff-b.diff).map(mkC)}},
+    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn",
+       drill:{title:`CBSE — below national · ${lbl}`, sub:`${below} area${below===1?'':'s'} · School EPC < national Step 1 benchmark`, items: belowA.map(mkC)}},
+    {lab:"On par or above", val:on, sub:"School \u2265 national",
+       drill:{title:`CBSE — on par or above · ${lbl}`, sub:`${on} area${on===1?'':'s'} · School ≥ national`, items: onaboveA.map(mkC)}},
     {lab:"Widest gap", val:widest.diff, sub:widest.area, cls:"v-warn"}
   ].map(kpiHTML).join("");
   document.getElementById("out-kpis").innerHTML=[
@@ -967,5 +1034,14 @@ setExam("modules");
   }
 })();
 </script>
+<div class="modal-ov" id="drill-ov" onclick="if(event.target===this)closeDrill()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="drill-title">
+    <div class="modal-hd">
+      <div><h3 id="drill-title"></h3><div class="msub" id="drill-sub"></div></div>
+      <button class="modal-x" onclick="closeDrill()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-bd"><ul id="drill-list"></ul></div>
+  </div>
+</div>
 </body>
 </html>

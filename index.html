@@ -37,6 +37,17 @@
   .kpi .sub{font-size:12px;color:var(--muted);margin-top:2px}
   .kpi .sub.up{color:var(--good)}
   .kpi .val.v-good{color:var(--good)} .kpi .val.v-warn{color:var(--orange)}
+  .kpi-x{cursor:pointer;transition:box-shadow .15s ease}
+  .kpi-x:hover{box-shadow:0 3px 12px rgba(13,42,92,.14)}
+  .kpi-caret{font-size:13px;color:var(--muted);font-weight:400;vertical-align:middle}
+  .kpidetail{grid-column:1/-1;background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:11px 14px;box-shadow:var(--shadow)}
+  .kpidetail .kpi-note{font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4}
+  .kpidetail ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+  .kpidetail li{font-size:12.5px;color:var(--ink);padding:7px 11px;background:#fff;border:1px solid var(--line);border-radius:7px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+  .kpidetail li .k{font-weight:600}
+  .kpidetail li .v{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600;white-space:nowrap}
+  .kpidetail li .v.miss{color:var(--orange)} .kpidetail li .v.ok{color:var(--good)}
+  .kpi-empty{font-size:12.5px;color:var(--good);font-weight:600;padding:3px 2px}
   .topbar2{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;margin-bottom:4px}
   .outhint{font-size:12px;color:var(--muted);margin:8px 2px 0;max-width:760px}
   .hist{margin-top:6px}
@@ -496,7 +507,7 @@ function moduleClass(mod,p){
   return yr ? yr+4 : null; // fall matriculation → graduates +4
 }
 
-let state = {exam:"step1", group:"all", year:null, sort:"net", labelMode:"class", clerkship:"Medicine", module:"Anatomy"};
+let state = {exam:"step1", group:"all", year:null, sort:"net", labelMode:"class", clerkship:"__ALL__", module:"__ALL__"};
 
 function rep(){ return REPORTS[state.exam]; }
 function yearIndex(y){ return rep().years.indexOf(y); }
@@ -532,8 +543,8 @@ function setExam(e){
     const ms=document.getElementById("modulesel");
     const FOUND=["MCG","Anatomy","Micro-Immuno","Pathology"];
     const mk=Object.keys(MODULES).sort();
-    ms.innerHTML=`<optgroup label="Foundations">`+mk.filter(c=>FOUND.includes(c)).map(c=>`<option value="${c}">${c}</option>`).join("")+`</optgroup><optgroup label="Organ Systems">`+mk.filter(c=>!FOUND.includes(c)).map(c=>`<option value="${c}">${c}</option>`).join("")+`</optgroup>`;
-    if(!MODULES[state.module]) state.module=Object.keys(MODULES).sort()[0];
+    ms.innerHTML='<option value="__ALL__">★ All EOM exams (overview)</option>'+`<optgroup label="Foundations">`+mk.filter(c=>FOUND.includes(c)).map(c=>`<option value="${c}">${c}</option>`).join("")+`</optgroup><optgroup label="Organ Systems">`+mk.filter(c=>!FOUND.includes(c)).map(c=>`<option value="${c}">${c}</option>`).join("")+`</optgroup>`;
+    if(state.module!=="__ALL__" && !MODULES[state.module]) state.module=Object.keys(MODULES).sort()[0];
     ms.value=state.module;
     populateModuleYears();
   } else if(isCBSE){
@@ -548,11 +559,19 @@ function setExam(e){
   render();
 }
 function populateModuleYears(){
-  const ys=document.getElementById("yearsel"), cur=ys.value, pers=Object.keys(MODULES[state.module]).sort();
+  const ys=document.getElementById("yearsel");
+  if(state.module==="__ALL__"){
+    const classes=[...new Set(eomExams().map(e=>e.cl).filter(Boolean))].sort((a,b)=>b-a);
+    const cur=ys.value;
+    ys.innerHTML='<option value="ALL">All classes</option>'+classes.map(c=>`<option value="${c}">Class of ${c}</option>`).join("");
+    ys.value = (cur==="ALL"||classes.map(String).includes(cur))?cur:"ALL";
+    return;
+  }
+  const cur=ys.value, pers=Object.keys(MODULES[state.module]).sort();
   ys.innerHTML=pers.slice().reverse().map(p=>`<option value="${p}">${modulePeriodLabel(state.module,p)}</option>`).join("");
   ys.value = pers.includes(cur)?cur:pers[pers.length-1];
 }
-function onModuleChange(){ state.module=document.getElementById("modulesel").value; populateModuleYears(); render(); }
+function onModuleChange(){ state.module=document.getElementById("modulesel").value; populateModuleYears(); setSortOptions(); render(); }
 function refreshPeriodSelect(){ if(state.exam==="shelf") populateShelfYears(); else if(state.exam==="modules") populateModuleYears(); else if(state.exam==="cbse") populateCBSEYears(); else if(state.exam==="bridge") populateBridgeYears(); else refreshYearSelect(); }
 function populateShelfYears(){
   const ys=document.getElementById("yearsel"), cur=ys.value;
@@ -587,6 +606,10 @@ function renderMapper(){
     return;
   }
   if(exam==="modules"){
+    if(state.module==="__ALL__"){
+      document.getElementById("maprows").innerHTML='<div style="font-size:12.5px;color:var(--muted)">Showing all modules. Select a specific module to adjust its administration → graduating-class mapping.</div>';
+      return;
+    }
     const mod=state.module, pers=Object.keys(MODULES[mod]).sort().reverse();
     document.getElementById("maprows").innerHTML =
       '<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Each module administration is mapped to the graduating class that sat it (AY runs Jul–Jun). Adjust for FlexMed / off-cycle cohorts or to correct an inferred assignment.</div>' +
@@ -602,6 +625,20 @@ function renderMapper(){
           </div>
         </div>`;
       }).join("");
+    return;
+  }
+  if(exam==="shelf" && state.clerkship==="__ALL__"){
+    const yrs=[...new Set(Object.values(SHELF).flatMap(c=>Object.keys(c)))].sort();
+    document.getElementById("maprows").innerHTML =
+      '<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">All shelf subjects share the same exam-year → graduating-class mapping. Adjust below for FlexMed or off-cycle students if needed.</div>' +
+      yrs.slice().reverse().map(y=>`
+        <div class="mcell">
+          <span>Subject Exams · ${yp("shelf")} ${y}</span>
+          <div class="pre">Class of
+            <input type="number" min="2020" max="2040" value="${(classMap.shelf&&classMap.shelf[y])||""}"
+              oninput="(classMap.shelf=classMap.shelf||{})['${y}']=parseInt(this.value,10); render();">
+          </div>
+        </div>`).join("");
     return;
   }
   const years = exam==="shelf" ? Object.keys(SHELF[state.clerkship]) : rep().years;
@@ -625,12 +662,20 @@ function setSortOptions(){
   } else if(state.exam==="shelf" && state.clerkship==="__ALL__"){
     ss.innerHTML='<option value="below">Furthest below benchmark</option><option value="above">Highest vs national</option><option value="name">Subject (A–Z)</option>';
     if(!["below","above","name"].includes(ss.value)) ss.value="below";
+  } else if(state.exam==="modules" && state.module==="__ALL__"){
+    ss.innerHTML='<option value="mean">Module average (low→high)</option><option value="mean-high">Module average (high→low)</option><option value="class">Class</option><option value="name">Module (A–Z)</option>';
+    if(!["mean","mean-high","class","name"].includes(ss.value)) ss.value="mean";
   } else { ss.innerHTML=SORT_DEFAULT; if(!["net","lower","higher","trend","name"].includes(ss.value)) ss.value="net"; }
 }
 function classLabel(y){ return (y>=2028?"ASCEND":"Legacy")+" Class of "+y; }
 function cohortInfo(){
   const e=state.exam, p=(document.getElementById("yearsel")||{}).value;
   if(e==="modules"){
+    if(state.module==="__ALL__"){
+      const f=(document.getElementById("yearsel")||{}).value;
+      if(f && f!=="ALL"){ const cl=+f; return {cls:(cl>=2028?"ASCEND":"Legacy")+" Class of "+cl, sub:"All End-of-Module CAS exams", t:cl>=2028?"2028":"legacy", yr:cl}; }
+      return {cls:"All ASCEND cohorts", sub:"All End-of-Module CAS exams", t:"2028", yr:2028};
+    }
     const cl=moduleClass(state.module,p)||2028;
     const lbl=(cl>=2028?"ASCEND":"Legacy")+" Class of "+cl;
     return {cls:lbl, sub:"Pre-clerkship course exams (CAS) · "+state.module, t:(cl>=2028?"2028":"legacy"), yr:cl};
@@ -662,26 +707,59 @@ function render(){
   state.year = document.getElementById("yearsel").value || rep().current;
   renderKPIs(); renderWatch(); renderTable();
 }
-function kpiHTML(c){ return `<div class="kpi"><div class="lab">${c.lab}</div><div class="val ${c.cls||''}">${c.val}</div><div class="sub ${c.up?'up':''}">${c.sub}</div></div>`; }
+function kpiHTML(c){
+  const hasList = Array.isArray(c.list);
+  const caret = hasList ? ` <span class="kpi-caret" id="car-${c.key}">▸</span>` : "";
+  const onclick = hasList ? ` onclick="toggleKpi('${c.key}')"` : "";
+  let panel="";
+  if(hasList){
+    const body = c.list.length
+      ? '<ul>'+c.list.map(it=> typeof it==="string" ? `<li>${it}</li>` : `<li><span class="k">${it.k}</span><span class="v ${it.cls||''}">${it.v||""}</span></li>`).join('')+'</ul>'
+      : `<div class="kpi-empty">${c.empty||"Nothing to show."}</div>`;
+    panel = `<div class="kpidetail" id="kd-${c.key}" style="display:none">${c.note?`<div class="kpi-note">${c.note}</div>`:""}${body}</div>`;
+  }
+  return `<div class="kpi${hasList?' kpi-x':''}"${onclick}><div class="lab">${c.lab}</div><div class="val ${c.cls||''}">${c.val}${caret}</div><div class="sub ${c.up?'up':''}">${c.sub}</div></div>`+panel;
+}
+function toggleKpi(key){
+  const el=document.getElementById('kd-'+key), car=document.getElementById('car-'+key);
+  if(!el) return;
+  const show = el.style.display==="none";
+  el.style.display = show ? "" : "none";
+  if(car) car.textContent = show ? "▾" : "▸";
+}
 function renderKPIs(){
   const r=rep(), y=state.year, su=r.summary[y], lbl=labelFor(state.exam,y);
   document.getElementById("cap-year").textContent = `${r.label} · ${lbl}`;
   document.getElementById("out-year").textContent = `${r.label} · ${lbl}`;
-  const nets = rowsFor("all").map(row=>vals(row,y).net);
-  const total=nets.length, above=nets.filter(n=>n>=10).length, onpar=nets.filter(n=>n>=0&&n<10).length, below=nets.filter(n=>n<0).length;
+  const C=CRITERIA[state.exam], maxBelow=100-C.areaMin;
+  const cats = rowsFor("all").map(row=>{const v=vals(row,y);return {name:row.name, group:row.group, l:v.l, h:v.h, net:v.net, fails:v.l>maxBelow};});
+  const total=cats.length, above=cats.filter(c=>c.net>=10), onpar=cats.filter(c=>c.net>=0&&c.net<10), below=cats.filter(c=>c.net<0);
+  const failBar=cats.filter(c=>c.fails).sort((a,b)=>b.l-a.l);
+  const passDiff=su.pass-su.natpass, passOK=passDiff>=C.passMargin;
   const cap=[
     {lab:"Content areas tracked", val:total, sub:"systems · disciplines · tasks"},
-    {lab:"Above national", val:above, sub:"net ≥ +10", cls:"v-good"},
-    {lab:"On par with national", val:onpar, sub:"net 0 to +9"},
-    {lab:"Below national", val:below, sub:"more students below than above", cls:"v-warn"}
+    {lab:"Above national", val:above.length, sub:"net ≥ +10", cls:"v-good",
+      key:"cap-above", list:above.sort((a,b)=>b.net-a.net).map(c=>({k:`${c.name} <span style="color:var(--muted);font-weight:400">· ${GRPLABEL[c.group]}</span>`, v:`net +${c.net}`, cls:"ok"})), empty:"No categories ≥ +10 this period."},
+    {lab:"On par with national", val:onpar.length, sub:"net 0 to +9",
+      key:"cap-onpar", list:onpar.sort((a,b)=>b.net-a.net).map(c=>({k:c.name, v:`net ${c.net>0?'+':''}${c.net}`}))},
+    {lab:"Below national", val:below.length, sub:"more students below than above", cls:"v-warn",
+      key:"cap-below", note:`Flagged ✗ where the category also misses the school standard (> ${maxBelow}% of students below national).`,
+      list:below.sort((a,b)=>a.net-b.net).map(c=>({k:c.name, v:`${c.l}% below · net ${c.net}${c.fails?' · ✗ below bar':' · ✓'}`, cls:c.fails?'miss':''})), empty:"No categories with a negative net this period."},
+    {lab:"Below school standard", val:failBar.length, sub:`> ${maxBelow}% below national`, cls:failBar.length?"v-warn":"v-good",
+      key:"cap-failbar", note:`School standard: ≤ ${maxBelow}% of students below national in each content category (≥ ${C.areaMin}% same-or-above).`,
+      list:failBar.map(c=>({k:`${c.name} <span style="color:var(--muted);font-weight:400">· ${GRPLABEL[c.group]}</span>`, v:`${c.l}% below`, cls:"miss"})), empty:`All ${total} categories meet the ≤ ${maxBelow}% bar.`}
   ];
   document.getElementById("cap-kpis").innerHTML = cap.map(kpiHTML).join("");
   const out=[
     {lab:"First-time examinees", val:su.n, sub:`tested · ${lbl}`},
     {lab:"School pass rate", val:su.pass+"%", sub:`national ${su.natpass}%`, up:su.pass>=su.natpass},
-    {lab:"vs national pass", val:(su.pass-su.natpass>=0?"+":"")+(su.pass-su.natpass)+" pts", sub:"school − national", up:su.pass-su.natpass>=0}
+    {lab:"vs national pass", val:(passDiff>=0?"+":"")+passDiff+" pts", sub:"school − national", up:passDiff>=0,
+      key:"out-pass", note:`School standard: program pass rate ≥ national ${C.passMargin>0?`+ ${C.passMargin} pt`:`(≥ 0 pt)`}.`,
+      list:[{k:`Program ${su.pass}% vs national ${su.natpass}%`, v:`${passDiff>=0?'+':''}${passDiff} pt · ${passOK?'✓ meets':'✗ below'}`, cls:passOK?'ok':'miss'}]}
   ];
-  if(r.scored) out.push({lab:"School mean score", val:su.mean, sub:`SD ${su.sd} · national ${su.natmean}`, up:su.mean>=su.natmean});
+  if(r.scored) out.push({lab:"School mean score", val:su.mean, sub:`SD ${su.sd} · national ${su.natmean}`, up:su.mean>=su.natmean,
+      key:"out-mean", note:state.exam==="step2"?"The Step 2 mean is reported for context and is deliberately not a program-evaluation benchmark.":"",
+      list:[{k:`School mean ${su.mean} vs national ${su.natmean}`, v:`${su.mean-su.natmean>=0?'+':''}${su.mean-su.natmean}`, cls:su.mean>=su.natmean?'ok':'miss'}]});
   document.getElementById("out-kpis").innerHTML = out.map(kpiHTML).join("");
 }
 function renderWatch(){
@@ -868,20 +946,28 @@ function renderShelf(){
   document.getElementById("cap-year").textContent=`${cl} shelf · ${lbl}`;
   document.getElementById("out-year").textContent=`${cl} shelf · ${lbl}`;
   document.getElementById("outhint").textContent="EPC = equated percent correct (share of content mastered). Differences shown are School − National; NBME flags only statistically meaningful gaps with ★, so small unflagged differences are within normal cohort noise.";
-  const below=areas.filter(a=>a.diff<0).length, on=areas.filter(a=>a.diff===0).length, above=areas.filter(a=>a.diff>0).length, fl=areas.filter(a=>a.sig).length;
+  const belowA=areas.filter(a=>a.diff<0), on=areas.filter(a=>a.diff===0).length, above=areas.filter(a=>a.diff>0).length, flA=areas.filter(a=>a.sig);
+  const tol=SHELF_MEAN_TOL;
   const cap=[
     {lab:"Content areas tracked", val:areas.length, sub:"organ systems · tasks · sites"},
-    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn"},
+    {lab:"Below national", val:belowA.length, sub:"School EPC < national", cls:"v-warn",
+      key:"cap-sbelow", note:"Content-area gaps are reviewed in clerkship review; the program standard applies to the subject mean (see outcome below).",
+      list:belowA.slice().sort((a,b)=>a.diff-b.diff).map(a=>({k:`${a.area}${a.sig?' '+sigStar(a.sig):''}`, v:`${a.school} vs ${a.nat} · ${a.diff}`, cls:a.sig?'miss':''})), empty:"No content areas below national this year."},
     {lab:"On par / above", val:on+above, sub:"School ≥ national"},
-    {lab:"Statistically flagged", val:fl, sub:"meaningful gap (★/★★)", cls: fl?"v-warn":""}
+    {lab:"Statistically flagged", val:flA.length, sub:"meaningful gap (★/★★)", cls: flA.length?"v-warn":"",
+      key:"cap-sflag", note:"NBME flags only statistically meaningful gaps; small unflagged differences are normal cohort noise.",
+      list:flA.slice().sort((a,b)=>a.diff-b.diff).map(a=>({k:`${a.area} ${sigStar(a.sig)}`, v:`${a.diff>0?'+':''}${a.diff} EPC`, cls:a.diff<0?'miss':'ok'})), empty:"No statistically flagged gaps this year."}
   ];
   document.getElementById("cap-kpis").innerHTML=cap.map(kpiHTML).join("");
   const dT=(t.mean!=null&&t.cmean!=null)?(t.mean-t.cmean):null;
+  const benchOK = dT!=null ? (dT >= -tol) : null;
   const out=[
     {lab:"First-time examinees", val:(t.n!=null?t.n:"—"), sub:`tested · ${lbl}`},
     {lab:"School mean EPC", val:(t.mean!=null?t.mean:"—"), sub:(t.sd!=null?`SD ${t.sd}`:"")},
     {lab:"National mean EPC", val:(t.cmean!=null?t.cmean:"—"), sub:(t.csd!=null?`SD ${t.csd}`:"")},
-    {lab:"School − national", val:(dT!=null?((dT>=0?"+":"")+dT.toFixed(1)):"—"), sub:"total EPC", up:dT!=null&&dT>=0}
+    {lab:"School − national", val:(dT!=null?((dT>=0?"+":"")+dT.toFixed(1)):"—"), sub:"total EPC · program benchmark", up:dT!=null&&dT>=0,
+      key:"out-sbench", note:`School standard: first-time-taker mean within ±${tol} EPC of national (meets if school ≥ national − ${tol}).`,
+      list: dT==null?[]:[{k:`${cl} · ${t.mean} vs national ${t.cmean}`, v:`${dT>=0?'+':''}${dT.toFixed(1)} · ${benchOK?'✓ meets':'✗ below'}`, cls:benchOK?'ok':'miss'}], empty:"Mean not reported this year."}
   ];
   document.getElementById("out-kpis").innerHTML=out.map(kpiHTML).join("");
   const dd=SHELFDIST[cl]&&SHELFDIST[cl][y];
@@ -952,10 +1038,15 @@ function renderShelfAll(){
   const belowList=subs.filter(s=>s.meets===false).sort((a,b)=>a.diff-b.diff);
   const belowN=belowList.length;
   const avgDiff=subs.reduce((a,s)=>a+(s.diff||0),0)/(tracked||1);
+  const meetList=subs.filter(s=>s.meets===true).sort((a,b)=>a.diff-b.diff);
   document.getElementById("cap-kpis").innerHTML=[
-    {lab:"Shelf subjects", val:tracked, sub:`reported · ${lbl}`},
-    {lab:"Meet benchmark", val:meetN, sub:`within ±${tol} EPC of national`, cls:meetN===tracked?"v-good":""},
-    {lab:"Below benchmark", val:belowN, sub:`> ${tol} EPC below national`, cls:belowN?"v-warn":""},
+    {lab:"Shelf subjects", val:tracked, sub:`reported · ${lbl}`,
+      key:"all-tracked", list:subs.slice().sort((a,b)=>a.diff-b.diff).map(s=>({k:s.subj, v:`${s.t.mean} vs ${s.t.cmean} · ${s.diff>=0?'+':''}${s.diff}`, cls:s.meets?'ok':'miss'}))},
+    {lab:"Meet benchmark", val:meetN, sub:`within ±${tol} EPC of national`, cls:meetN===tracked?"v-good":"",
+      key:"all-meet", list:meetList.map(s=>({k:s.subj, v:`${s.diff>=0?'+':''}${s.diff} EPC`, cls:'ok'})), empty:"No subjects meet the benchmark this year."},
+    {lab:"Below benchmark", val:belowN, sub:`> ${tol} EPC below national`, cls:belowN?"v-warn":"v-good",
+      key:"all-below", note:`School standard: first-time-taker mean within ±${tol} EPC of national (meets if school ≥ national − ${tol}).`,
+      list:belowList.map(s=>({k:s.subj, v:`${s.t.mean} vs ${s.t.cmean} · ${s.diff} EPC`, cls:'miss'})), empty:`All ${tracked} subjects are within ±${tol} EPC of national.`},
     {lab:"Mean gap vs national", val:(avgDiff>=0?"+":"")+avgDiff.toFixed(1), sub:"avg school − national EPC", cls:avgDiff< -tol?"v-warn":""}
   ].map(kpiHTML).join("");
   document.getElementById("out-kpis").innerHTML=`<div class="kpi" style="grid-column:1/-1"><div class="lab">Program benchmark · first-time takers</div><div class="sub" style="font-size:12.5px;line-height:1.5">School mean within <b>±${tol} EPC</b> of national on each subject (meets if school ≥ national − ${tol}). ${belowN===0?`All ${tracked} subjects meet the benchmark for ${lbl}.`:`<b>${belowN} of ${tracked}</b> below benchmark: ${belowList.map(s=>`${s.subj} (${s.diff})`).join(', ')}.`}</div></div>`;
@@ -1011,7 +1102,78 @@ function moduleDetail(mod,p){
   const rows=r.cats.map(c=>{const d=Math.round(c.mean-r.mean);return `<div style="margin-bottom:7px;font-size:13px"><b>${c.name}</b>: ${c.mean}% (SD ${c.sd}) · ${d>=0?"+":""}${d} vs module average</div>`;}).join("");
   return `<div class="inner"><div><h4>Categories this administration</h4>${rows}</div><div><h4>Reading</h4><p class="note">Faculty-defined score categories for this course exam. Because CAS exams are custom-built, comparisons are within the module (against its own average). Note that successive administrations of this module may have been taken by <b>different graduating classes</b>, so a change from one year to the next reflects a different cohort, not the same students over time.</p></div></div>`;
 }
+function eomExams(){
+  const out=[];
+  Object.keys(MODULES).forEach(mod=>Object.keys(MODULES[mod]).forEach(p=>{
+    const rr=MODULES[mod][p];
+    if(rr.phase==="Mid") return;            // End-of-Module only (exclude mid-module exams)
+    out.push({mod,p,rr,cl:moduleClass(mod,p)});
+  }));
+  return out;
+}
+function renderModulesAll(){
+  const _t=document.getElementById("tablesection"); if(_t) _t.textContent="All End-of-Module exams";
+  const filter=document.getElementById("yearsel").value || "ALL";
+  let exams=eomExams();
+  if(filter!=="ALL") exams=exams.filter(e=>String(e.cl)===String(filter));
+  const fLabel = filter==="ALL" ? "all ASCEND cohorts" : "Class of "+filter;
+  document.getElementById("cap-title").textContent="All module CAS exams";
+  document.getElementById("out-title").textContent="Course-built exams";
+  document.getElementById("cap-year").textContent=`All End-of-Module exams · ${fLabel}`;
+  document.getElementById("out-year").textContent=`All End-of-Module exams · ${fLabel}`;
+  document.getElementById("outhint").textContent="End-of-Module (EOM) CAS exams across every module (mid-module exams excluded). These are course-built exams with no national norm, so the signal is internal: the module's own average and which faculty category is weakest. A module's administrations across years belong to different graduating classes.";
+  const modsTracked=[...new Set(exams.map(e=>e.mod))].length;
+  const meanAll = exams.length ? exams.reduce((a,e)=>a+e.rr.mean,0)/exams.length : 0;
+  const lowest = exams.slice().sort((a,b)=>a.rr.mean-b.rr.mean)[0];
+  const sortedExams=exams.slice().sort((a,b)=>a.rr.mean-b.rr.mean);
+  document.getElementById("cap-kpis").innerHTML=[
+    {lab:"Modules", val:modsTracked, sub:"with an EOM exam"+(filter!=="ALL"?" · "+fLabel:"")},
+    {lab:"EOM exams", val:exams.length, sub:"administrations shown",
+      key:"eom-all", note:"CAS exams are course-built with no national norm, so this is an internal ranking, not a vs-national standard. Lowest averages first.",
+      list:sortedExams.map(e=>({k:`${e.mod} <span style="color:var(--muted);font-weight:400">· Class of ${e.cl||"—"}</span>`, v:`${e.rr.mean}% · n ${e.rr.n}`}))},
+    {lab:"Mean across exams", val:meanAll?meanAll.toFixed(1)+"%":"—", sub:"unweighted average"},
+    {lab:"Lowest module average", val:lowest?lowest.rr.mean+"%":"—", sub:lowest?`${lowest.mod} · Class of ${lowest.cl||"—"}`:"", cls:"v-warn",
+      key:"eom-low", note:"Modules ranked by their own exam average (lowest first) — an internal soft-spot scan, not a program standard.",
+      list:sortedExams.slice(0,8).map(e=>{const w=e.rr.cats.slice().sort((a,b)=>a.mean-b.mean)[0];return {k:`${e.mod} <span style="color:var(--muted);font-weight:400">· Class of ${e.cl||"—"}</span>`, v:`${e.rr.mean}% · weakest ${w.name} (${w.mean}%)`};})}
+  ].map(kpiHTML).join("");
+  document.getElementById("out-kpis").innerHTML=`<div class="kpi" style="grid-column:1/-1"><div class="lab">Reading</div><div class="sub" style="font-size:12.5px;line-height:1.5">CAS module exams are <b>course-built and have no national comparison group</b>, so they are not part of the program success criteria (those apply to Step&nbsp;1, Step&nbsp;2, and the shelf exams). Use these to spot internal soft spots — a low module average or a weak faculty category. ${filter==="ALL"?"Rows are grouped by graduating class, since a module's administrations across years are different cohorts.":"Showing "+fLabel+" only."}</div></div>`;
+  document.getElementById("successband").innerHTML="";
+  document.getElementById("shelfdist").innerHTML="";
+  const low=exams.slice().sort((a,b)=>a.rr.mean-b.rr.mean).slice(0,6);
+  document.getElementById("watch-title").textContent=`All EOM exams · ${fLabel}: lowest module averages`;
+  document.getElementById("watch-hint").innerHTML="Ranked by the module's own exam average (lowest first). CAS exams have no national norm, so this is an internal raw-score ranking, not a vs-national signal.";
+  document.getElementById("watch-list").innerHTML=low.map(e=>{const w=e.rr.cats.slice().sort((a,b)=>a.mean-b.mean)[0];return `<li><span class="nm">${e.mod}</span><span class="grp">Class of ${e.cl||"—"}</span><span class="pill l">mean ${e.rr.mean}%</span><span class="pill net">n ${e.rr.n}</span><span class="reason">weakest: ${w.name} (${w.mean}%)</span></li>`;}).join("");
+  document.getElementById("thead-row").innerHTML='<th>Module</th><th>Class</th><th>Exam</th><th class="num">Examinees</th><th class="num">Mean %</th><th class="num">SD</th><th class="num">Range</th><th>Weakest category</th>';
+  setLegend("modules");
+  const s=state.sort;
+  exams.sort((a,b)=> s==="name"?a.mod.localeCompare(b.mod) : s==="mean-high"?(b.rr.mean-a.rr.mean) : s==="class"?(((b.cl||0)-(a.cl||0))||a.mod.localeCompare(b.mod)) : (a.rr.mean-b.rr.mean));
+  const phaseOnly=rr=>rr.phase==="Mid"?`Mid-Module ${rr.year}`:`End-of-Module ${rr.year}`;
+  let idx=0, rowsHTML="";
+  const renderRow=e=>{
+    const w=e.rr.cats.slice().sort((a,b)=>a.mean-b.mean)[0], i=idx++;
+    return `<tr onclick="toggleDetail(${i})">
+      <td><span class="catname">${e.mod}</span></td>
+      <td><span class="grptag">Class of ${e.cl||"—"}</span></td>
+      <td>${phaseOnly(e.rr)}</td>
+      <td class="num">${e.rr.n}</td><td class="num">${e.rr.mean}%</td><td class="num">${e.rr.sd}</td>
+      <td class="num">${e.rr.min}–${e.rr.max}</td>
+      <td><span class="grptag">${w.name} (${w.mean}%)</span></td>
+    </tr>
+    <tr class="detail" id="detail-${i}" style="display:none"><td colspan="8">${moduleDetail(e.mod,e.p)}</td></tr>`;
+  };
+  if(filter==="ALL"){
+    const classes=[...new Set(exams.map(e=>e.cl||0))].sort((a,b)=>b-a);
+    classes.forEach(cl=>{
+      const n=exams.filter(e=>(e.cl||0)===cl).length, tag=cl>=2028?"ASCEND":"Legacy";
+      rowsHTML += `<tr class="classhdr"><td colspan="8" style="background:#eef4ff;font-weight:700;color:var(--navy);font-size:12px;padding:6px 12px">${tag} Class of ${cl} · ${n} EOM exam${n===1?'':'s'}</td></tr>`;
+      exams.filter(e=>(e.cl||0)===cl).forEach(e=>{ rowsHTML += renderRow(e); });
+    });
+  } else { exams.forEach(e=>{ rowsHTML += renderRow(e); }); }
+  document.getElementById("tbody").innerHTML=rowsHTML;
+  openDetail=null;
+}
 function renderModules(){
+  if(state.module==="__ALL__"){ renderModulesAll(); return; }
   const mod=state.module, rec=MODULES[mod], pers=Object.keys(rec).sort();
   const psv=document.getElementById("yearsel").value;
   const p = rec[psv]?psv:pers[pers.length-1];
@@ -1025,11 +1187,14 @@ function renderModules(){
   const weak=r.cats.slice().sort((a,b)=>a.mean-b.mean)[0];
   const multi=r.cats.length>1;
   const belowN=r.hist.reduce((a,c,i)=> a + (r.edges[i]<70 ? c : 0), 0);
+  const belowAvg=r.cats.filter(c=>c.mean<r.mean).sort((a,b)=>a.mean-b.mean);
   const cap=[
     {lab:"First-time examinees", val:r.n, sub:plbl},
     {lab:"Cohort mean % correct", val:r.mean+"%", sub:`SD ${r.sd}`},
     {lab:"Score range", val:`${r.min}–${r.max}`, sub:"lowest – highest scorer"},
-    multi ? {lab:"Weakest category", val:weak.mean+"%", sub:weak.name, cls:"v-warn"}
+    multi ? {lab:"Weakest category", val:weak.mean+"%", sub:weak.name, cls:"v-warn",
+              key:"mod-weak", note:`CAS exams have no national norm; categories below this module's own average (${r.mean}%) are listed.`,
+              list:belowAvg.map(c=>({k:c.name, v:`${c.mean}% · ${Math.round(c.mean-r.mean)} vs avg`, cls:'miss'})), empty:"No faculty category is below the module average."}
           : {lab:"Students below 70%", val:belowN, sub:"low-scoring tail", cls: belowN?"v-warn":""}
   ];
   document.getElementById("cap-kpis").innerHTML=cap.map(kpiHTML).join("");
@@ -1099,12 +1264,15 @@ function renderCBSE(){
   document.getElementById("cap-year").textContent=`CBSE · ${lbl}`;
   document.getElementById("out-year").textContent=`CBSE · ${lbl}`;
   document.getElementById("outhint").textContent="The CBSE is a Step 1\u2013style practice exam scored in Step 1's own content framework; the comparison group is national USMLE Step 1 first-takers on the CBSE, so each School \u2212 National gap is a Step 1\u2013readiness signal. Students sit it during preclerkship, so a gap to first-takers is expected — read it as trajectory, and don't over-read areas built on few items.";
-  const below=areas.filter(a=>a.diff<0).length, on=areas.filter(a=>a.diff>=0).length;
+  const belowArr=areas.filter(a=>a.diff<0).slice().sort((a,b)=>a.diff-b.diff);
+  const below=belowArr.length, on=areas.filter(a=>a.diff>=0).length;
   const widest=areas.slice().sort((a,b)=>a.diff-b.diff)[0];
   const meanGap=(areas.reduce((s,a)=>s+a.diff,0)/areas.length).toFixed(1);
   document.getElementById("cap-kpis").innerHTML=[
     {lab:"Content areas tracked", val:areas.length, sub:"tasks · systems · disciplines"},
-    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn"},
+    {lab:"Below national", val:below, sub:"School EPC < national", cls:"v-warn",
+      key:"cbse-below", note:"The CBSE is a preclerkship readiness check against Step 1 first-takers — a gap is expected and is not a program standard. Read as trajectory.",
+      list:belowArr.map(a=>({k:`${a.area} <span style="color:var(--muted);font-weight:400">· ${a.section}</span>`, v:`${a.school} vs ${a.nat} · ${a.diff}`, cls:'miss'})), empty:"No areas below national."},
     {lab:"On par or above", val:on, sub:"School \u2265 national"},
     {lab:"Widest gap", val:widest.diff, sub:widest.area, cls:"v-warn"}
   ].map(kpiHTML).join("");

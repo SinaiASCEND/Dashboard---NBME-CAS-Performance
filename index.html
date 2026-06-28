@@ -12,8 +12,8 @@
     --radius:10px;--shadow:0 1px 2px rgba(13,42,92,.06),0 6px 18px rgba(13,42,92,.06);
   }
   *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;line-height:1.45;}
+  html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;line-height:1.45;overflow-x:hidden;max-width:100%;}
   header.topbar{background:linear-gradient(180deg,#0d2a5c 0%,#102f63 100%);color:#fff;padding:18px 22px;}
   .topbar .row{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
   .brand{min-width:0;flex:1 1 360px}
@@ -150,6 +150,8 @@
   .trend{text-align:center;font-weight:700}
   .trend .t-up{color:var(--good)} .trend .t-dn{color:var(--orange)} .trend .t-fl{color:var(--muted)}
   .trend small{display:block;font-weight:500;font-size:10px;color:var(--muted)}
+  tr.detail{display:none}
+  tr.detail.open{display:table-row}
   .detail td{background:#fafbfe;padding:0}
   .detail .inner{padding:16px 18px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px}
   .detail h4{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
@@ -169,29 +171,101 @@
     thead th.hide-sm,td.hide-sm{display:none}
     .legend{margin-left:0;width:100%}
   }
+  /* ===== True mobile / phone layout ===== */
+  @media (max-width:680px){
+    header.topbar{padding:14px 14px 12px}
+    .mh-left b{font-size:12.5px}
+    .logochip img{height:40px}
+    .brand{margin-top:10px}
+    .brand h1{font-size:16px;line-height:1.25}
+    .brand p{font-size:12px}
+
+    /* Assessment tabs become a single swipeable strip */
+    .navwrap{margin-top:12px;flex-wrap:nowrap;overflow-x:auto;gap:10px;align-items:center;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;
+      padding-bottom:4px;scroll-snap-type:x proximity}
+    .navwrap::-webkit-scrollbar{display:none}
+    .examtoggle{flex-wrap:nowrap;flex:none}
+    .examtoggle button{white-space:nowrap;padding:8px 14px;scroll-snap-align:start}
+    .correltile{flex:none}
+    .correltile button{white-space:nowrap}
+    .cohortbanner{margin-top:12px}
+
+    main{padding:16px 14px 48px}
+    .section-label{margin:20px 0 9px}
+
+    /* KPI tiles: two up, tighter */
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .kpi{padding:12px 12px}
+    .kpi .val{font-size:21px}
+    .kpi .lab{font-size:10.5px}
+
+    /* Control bars stack to full width */
+    .topbar2{flex-direction:column;align-items:stretch;gap:12px;padding:12px}
+    .topbar2 .ctrl{width:100%}
+    .controls{flex-direction:column;align-items:stretch;gap:12px}
+    .controls .ctrl{width:100%}
+    .seg{width:100%;overflow-x:auto;scrollbar-width:none}
+    .seg::-webkit-scrollbar{display:none}
+    .seg button{flex:1 0 auto;white-space:nowrap}
+    select{width:100%}
+    #mapbtn{align-self:flex-start;padding:4px 0}
+    .mapper .mrow{flex-direction:column}
+
+    /* ---- Wide tables reflow into stacked cards ---- */
+    .tablewrap{border:0;background:transparent;box-shadow:none;overflow:visible}
+    table,tbody{display:block;width:100%}
+    thead{display:none}
+
+    tbody tr:not(.detail){
+      display:block;background:var(--card);border:1px solid var(--line);
+      border-radius:12px;box-shadow:var(--shadow);
+      padding:12px 14px 10px;margin-bottom:10px}
+
+    tbody tr:not(.detail) td{
+      display:flex;align-items:center;gap:10px;
+      padding:7px 0;border:0;text-align:left}
+    tbody tr:not(.detail) td::before{
+      content:attr(data-label);margin-right:auto;flex:none;
+      font:700 11px/1.3 "Helvetica Neue",Helvetica,Arial,sans-serif;
+      text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+    tbody tr:not(.detail) td.hide-sm{display:none}
+
+    /* Card title (content area / administration name) */
+    tbody tr:not(.detail) td.cardtitle{
+      display:block;padding:0 0 9px;margin-bottom:5px;
+      border-bottom:1px solid var(--line)}
+    tbody tr:not(.detail) td.cardtitle::before{display:none}
+    td.cardtitle .catname{font-size:14.5px}
+    td.cardtitle .range{display:inline-block}
+
+    /* Distribution bar spans full card width with label above */
+    tbody tr:not(.detail) td.barcell{display:block;padding:9px 0 3px}
+    tbody tr:not(.detail) td.barcell::before{display:block;margin:0 0 7px}
+    td.barcell .bar{min-width:0;width:100%}
+
+    /* Sparkline trend sits inline with its caption */
+    td.trend br{display:none}
+    td.trend small{display:inline;margin-left:6px}
+    td.trend .spark{flex:none}
+
+    /* Expanded detail becomes a card tucked under its row */
+    tr.detail.open{display:block;margin:-6px 0 12px}
+    tr.detail.open>td{display:block;background:#fafbfe;
+      border:1px solid var(--line);border-top:0;
+      border-radius:0 0 12px 12px;overflow:hidden}
+    .detail .inner{grid-template-columns:1fr;padding:14px}
+    .detail .bar{min-width:0}
+    .yrrow{grid-template-columns:64px 1fr;gap:8px}
+
+    .actions{flex-direction:column}
+    .btn{width:100%;text-align:center}
+  }
   @media print{
     body{background:#fff}
     .controls,.actions,.examtoggle,.mapper{display:none}
     .tablewrap,.kpi,.watch,.caveat{box-shadow:none}
   }
-  /* ---- Overview / landing ---- */
-  .hero{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;margin:4px 0 8px}
-  .hero h2{margin:0 0 6px;font-size:19px;color:var(--navy);letter-spacing:-.01em}
-  .hero p{margin:0;font-size:13.5px;color:var(--ink);max-width:880px;line-height:1.55}
-  .hero p+p{margin-top:8px;color:var(--muted)}
-  .vgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:6px}
-  @media(max-width:720px){.vgrid{grid-template-columns:1fr}}
-  .vcard{position:relative;text-align:left;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px 15px;cursor:pointer;transition:.15s;border-top:3px solid var(--accent,var(--navy));font:inherit;color:inherit}
-  .vcard:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(13,42,92,.12);border-color:var(--accent,var(--navy-soft))}
-  .vcard .vc-tag{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent,var(--navy-soft));margin-bottom:3px}
-  .vcard .vc-title{font-size:16px;font-weight:700;color:var(--navy);margin:0 0 8px}
-  .vcard .vc-row{font-size:12.5px;color:var(--ink);margin:0 0 6px;line-height:1.5}
-  .vcard .vc-row b{color:var(--navy);font-weight:700}
-  .vcard .vc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:11px;border-top:1px solid var(--line)}
-  .vcard .vc-cohort{font-size:11px;color:var(--muted);font-weight:600}
-  .vcard .vc-go{font-size:12px;font-weight:700;color:var(--accent,var(--navy-soft));white-space:nowrap}
-  .homefoot{font-size:12px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-top:16px;line-height:1.55;max-width:none}
-  .homefoot b{color:var(--navy)}
 </style>
 </head>
 <body>
@@ -207,8 +281,7 @@
     </div>
     <div class="navwrap">
       <div class="examtoggle" role="group" aria-label="Select assessment">
-        <button id="btn-home" aria-pressed="true" onclick="setExam('home')">Overview</button>
-        <button id="btn-modules" aria-pressed="false" onclick="setExam('modules')">Module CAS Exams</button>
+        <button id="btn-modules" aria-pressed="true" onclick="setExam('modules')">Module CAS Exams</button>
         <button id="btn-cbse" aria-pressed="false" onclick="setExam('cbse')">CBSE</button>
         <button id="btn-step1" aria-pressed="false" onclick="setExam('step1')">Step 1</button>
         <button id="btn-shelf" aria-pressed="false" onclick="setExam('shelf')">Clerkship Shelf Exams</button>
@@ -223,8 +296,6 @@
 </header>
 
 <main>
-  <div id="homeview" style="display:none"></div>
-  <div id="dataview">
   <div class="topbar2">
     <div class="ctrl">
       <label>Label periods by</label>
@@ -324,7 +395,6 @@
       <button class="btn primary" onclick="window.print()">Print / save as PDF</button>
     </div>
   </div>
-  </div><!--/dataview-->
 </main>
 
 <script>
@@ -462,18 +532,12 @@ function trendFor(r){ const f=r.series[0],l=r.series[r.series.length-1]; return 
 
 function setExam(e){
   state.exam=e;
-  document.getElementById("btn-home").setAttribute("aria-pressed", e==="home");
   document.getElementById("btn-step1").setAttribute("aria-pressed", e==="step1");
   document.getElementById("btn-step2").setAttribute("aria-pressed", e==="step2");
   document.getElementById("btn-shelf").setAttribute("aria-pressed", e==="shelf");
   document.getElementById("btn-modules").setAttribute("aria-pressed", e==="modules");
   document.getElementById("btn-cbse").setAttribute("aria-pressed", e==="cbse");
   document.getElementById("btn-bridge").setAttribute("aria-pressed", e==="bridge");
-  const isHome=e==="home";
-  document.getElementById("homeview").style.display = isHome?"":"none";
-  document.getElementById("dataview").style.display = isHome?"none":"";
-  document.getElementById("cohortbanner").style.display = isHome?"none":"";
-  if(isHome){ document.body.style.backgroundColor="#f5f7fb"; renderHome(); return; }
   const isShelf=e==="shelf", isMod=e==="modules", isCBSE=e==="cbse", isBridge=e==="bridge";
   document.getElementById("clerkctrl").style.display = isShelf?"":"none";
   document.getElementById("modulectrl").style.display = isMod?"":"none";
@@ -578,61 +642,7 @@ function setCohortBanner(){
   if(c.yr){ bg = c.yr>=2028 ? "#fbf5f0" : "hsl("+(((c.yr-2023)*40)%360)+",24%,97.6%)"; }
   document.body.style.backgroundColor=bg;
 }
-function renderHome(){
-  const cards=[
-    {id:"modules", accent:"#e8531a", tag:"Pre-clerkship course exams",
-      title:"Module CAS Exams",
-      what:"Performance on the end-of-module (CAS) exams Sinai faculty build for each pre-clerkship course, broken out by content category and by administration.",
-      read:"The only exams here tied directly to specific courses — use them for <b>course-attributable</b> strengths and soft spots, read as gap vs. the module/curriculum average rather than lowest raw score.",
-      cohort:"ASCEND Classes of 2028 & 2029"},
-    {id:"cbse", accent:"#1c3f94", tag:"Comprehensive Basic Science Exam",
-      title:"CBSE",
-      what:"A Step 1\u2013style practice exam scored in Step 1's own content framework, sat at the end of pre-clerkship, with each content area compared to national Step 1 first-takers (EPC).",
-      read:"An early, <b>cross-sectional</b> read on Step 1 readiness by content area. It's a class snapshot, not a longitudinal link to this cohort's eventual Step 1.",
-      cohort:"ASCEND Class of 2028"},
-    {id:"step1", accent:"#0d2a5c", tag:"USMLE licensing exam",
-      title:"Step 1",
-      what:"Program pass rate vs. national and the share of students below the national group in each content category, from the annual school report.",
-      read:"Licensing-outcome health plus relative content soft spots, scored against the program standard (pass rate \u2265 national + 1 pt; \u226425% below national per category).",
-      cohort:"By exam year \u2192 graduating class"},
-    {id:"shelf", accent:"#1c3f94", tag:"NBME subject exams",
-      title:"Clerkship Shelf Exams",
-      what:"School mean vs. national first-time-taker mean (EPC) for each clerkship's subject exam, with a 3-year trend.",
-      read:"How each clerkship's students perform against national, held to the \u00b12.5 EPC standard. Shelf content sub-categories are clerkship-review-only, not part of program evaluation.",
-      cohort:"By exam year \u2192 graduating class"},
-    {id:"step2", accent:"#0d2a5c", tag:"USMLE licensing exam",
-      title:"Step 2",
-      what:"Pass rate vs. national and content-category distribution from the Step 2 CK annual school report.",
-      read:"Clinical-knowledge licensing outcome and content soft spots, scored against the program standard (pass rate \u2265 national; \u226430% below national per category).",
-      cohort:"By exam year \u2192 graduating class"},
-    {id:"bridge", accent:"#e8531a", tag:"Cross-assessment link",
-      title:"CAS \u2192 CBSE Correlation",
-      what:"How strongly each module's CAS exam predicted that student's CBSE performance in the same domain (per-student Pearson r), for students linked by examinee ID.",
-      read:"Which course exams are the best <b>early signal</b> of comprehensive readiness. Predictive strength varies widely by module \u2014 strongest for Cardiology, Hematology, Neuroscience; weakest for Behavioral Science.",
-      cohort:"ASCEND Class of 2028"}
-  ];
-  const grid=cards.map(c=>`
-    <button class="vcard" style="--accent:${c.accent}" onclick="setExam('${c.id}')">
-      <div class="vc-tag">${c.tag}</div>
-      <div class="vc-title">${c.title}</div>
-      <div class="vc-row"><b>Shows:</b> ${c.what}</div>
-      <div class="vc-row"><b>Read it for:</b> ${c.read}</div>
-      <div class="vc-foot"><span class="vc-cohort">${c.cohort}</span><span class="vc-go">Open view \u2192</span></div>
-    </button>`).join("");
-  document.getElementById("homeview").innerHTML=`
-    <div class="hero">
-      <h2>Content-Area Performance Dashboard</h2>
-      <p>An institutional view of how Sinai students perform across the assessment continuum \u2014 from pre-clerkship course exams through the comprehensive CBSE, clerkship shelf exams, and the USMLE Step exams \u2014 broken down by content area and benchmarked against national groups where a benchmark exists.</p>
-      <p>Pick a view below to dive in. Each one tracks a specific assessment and the cohort that sat it; the colored cohort banner inside each view confirms which class you're looking at.</p>
-    </div>
-    <div class="section-label">The six views</div>
-    <div class="vgrid">${grid}</div>
-    <div class="homefoot">
-      <b>Reading the whole picture:</b> the pre-clerkship views (Module CAS, CBSE, and the CAS\u2192CBSE link) follow the ASCEND Class of 2028 as the same students; the Step and Shelf views are organized by exam year and mapped to a graduating class. Every figure that carries a national benchmark is a <b>relative</b> signal for curricular review \u2014 a soft spot worth a look, not a pass/fail verdict on individual students.
-    </div>`;
-}
 function render(){
-  if(state.exam==="home"){ renderHome(); return; }
   state.sort = document.getElementById("sortsel").value;
   setCohortBanner();
   { const _x=document.getElementById("sortnote"); if(_x){_x.innerHTML="";_x.style.display="none";} }
@@ -702,14 +712,14 @@ function renderTable(){
         <i class="seg-h" style="width:${x.h}%">${x.h>=8?x.h:""}</i></div>`;
     const tT = x.tr>=4?"improving":x.tr<=-4?"worsening":"stable";
     return `<tr onclick="toggleDetail(${idx})" data-idx="${idx}">
-      <td><span class="catname">${x.name}<span class="range">(${x.range})</span></span></td>
-      <td class="hide-sm"><span class="grptag">${GRPLABEL[x.group]}</span></td>
-      <td>${bar}</td>
-      <td class="num">${x.l}%</td><td class="num">${x.h}%</td>
-      <td class="net"><span class="netcell ${netClass(x.net)}">${x.net>0?'+':''}${x.net}</span></td>
-      <td class="trend">${sparkline(x.series.map(t=>t[2]-t[0]))}<br><small>${tT}</small></td>
+      <td class="cardtitle"><span class="catname">${x.name}<span class="range">(${x.range})</span></span></td>
+      <td class="hide-sm" data-label="Type"><span class="grptag">${GRPLABEL[x.group]}</span></td>
+      <td class="barcell" data-label="Distribution">${bar}</td>
+      <td class="num" data-label="Lower than national">${x.l}%</td><td class="num" data-label="Higher than national">${x.h}%</td>
+      <td class="net" data-label="Net (H−L)"><span class="netcell ${netClass(x.net)}">${x.net>0?'+':''}${x.net}</span></td>
+      <td class="trend" data-label="3-period trend">${sparkline(x.series.map(t=>t[2]-t[0]))}<br><small>${tT}</small></td>
     </tr>
-    <tr class="detail" id="detail-${idx}" style="display:none"><td colspan="7">${detailHTML(x)}</td></tr>`;
+    <tr class="detail" id="detail-${idx}"><td colspan="7">${detailHTML(x)}</td></tr>`;
   }).join("");
   openDetail=null;
 }
@@ -738,9 +748,9 @@ function detailHTML(x){
 let openDetail=null;
 function toggleDetail(idx){
   const el=document.getElementById("detail-"+idx); if(!el)return;
-  const show = el.style.display==="none";
-  if(openDetail!==null && openDetail!==idx){ const p=document.getElementById("detail-"+openDetail); if(p)p.style.display="none"; }
-  el.style.display = show?"table-row":"none"; openDetail = show?idx:null;
+  const show = !el.classList.contains("open");
+  if(openDetail!==null && openDetail!==idx){ const p=document.getElementById("detail-"+openDetail); if(p)p.classList.remove("open"); }
+  el.classList.toggle("open", show); openDetail = show?idx:null;
 }
 function sigStar(s){ return s==="**"?"★★":(s==="*"?"★":""); }
 function shelfDistHTML(d,nat){
@@ -809,13 +819,13 @@ function renderShelf(){
   rows.sort((a,b)=> s==="higher"?(b.diff-a.diff) : s==="name"?a.area.localeCompare(b.area) : ((a.diff-b.diff)||((b.sig?1:0)-(a.sig?1:0))) );
   document.getElementById("tbody").innerHTML=rows.map((a,idx)=>`
     <tr onclick="toggleDetail(${idx})">
-      <td><span class="catname">${a.area} ${a.sig?`<span title="statistically meaningful gap" style="color:var(--orange)">${sigStar(a.sig)}</span>`:""}</span></td>
-      <td class="hide-sm"><span class="grptag">${a.section||""}</span></td>
-      <td class="num">${a.school}</td><td class="num">${a.nat}</td>
-      <td class="net"><span class="netcell ${shelfDiffClass(a)}">${a.diff>0?"+":""}${a.diff}</span></td>
-      <td class="num">${a.pct}</td>
+      <td class="cardtitle"><span class="catname">${a.area} ${a.sig?`<span title="statistically meaningful gap" style="color:var(--orange)">${sigStar(a.sig)}</span>`:""}</span></td>
+      <td class="hide-sm" data-label="Section"><span class="grptag">${a.section||""}</span></td>
+      <td class="num" data-label="School EPC">${a.school}</td><td class="num" data-label="National EPC">${a.nat}</td>
+      <td class="net" data-label="Difference"><span class="netcell ${shelfDiffClass(a)}">${a.diff>0?"+":""}${a.diff}</span></td>
+      <td class="num" data-label="% of items">${a.pct}</td>
     </tr>
-    <tr class="detail" id="detail-${idx}" style="display:none"><td colspan="6">${shelfDetail(cl,a.area)}</td></tr>`).join("");
+    <tr class="detail" id="detail-${idx}"><td colspan="6">${shelfDetail(cl,a.area)}</td></tr>`).join("");
   openDetail=null;
 }
 function shelfDetail(cl,area){
@@ -882,12 +892,12 @@ function renderModules(){
     const rr=MODULES[mod][pk], w=rr.cats.slice().sort((a,b)=>a.mean-b.mean)[0];
     const selstyle = pk===p ? ' style="background:#eef4ff"' : '';
     return `<tr onclick="toggleDetail(${idx})"${selstyle}>
-      <td><span class="catname">${modulePeriodLabel(mod,pk)}</span></td>
-      <td class="num">${rr.n}</td><td class="num">${rr.mean}%</td><td class="num">${rr.sd}</td>
-      <td class="num">${rr.min}–${rr.max}</td>
-      <td><span class="grptag">${w.name} (${w.mean}%)</span></td>
+      <td class="cardtitle"><span class="catname">${modulePeriodLabel(mod,pk)}</span></td>
+      <td class="num" data-label="Examinees">${rr.n}</td><td class="num" data-label="Mean % correct">${rr.mean}%</td><td class="num" data-label="SD">${rr.sd}</td>
+      <td class="num" data-label="Range">${rr.min}–${rr.max}</td>
+      <td data-label="Weakest category"><span class="grptag">${w.name} (${w.mean}%)</span></td>
     </tr>
-    <tr class="detail" id="detail-${idx}" style="display:none"><td colspan="6">${moduleDetail(mod,pk)}</td></tr>`;
+    <tr class="detail" id="detail-${idx}"><td colspan="6">${moduleDetail(mod,pk)}</td></tr>`;
   }).join("");
   openDetail=null;
 }
@@ -1040,7 +1050,7 @@ function renderBridge(){
   openDetail=null;
   setLegend("bridge");
 }
-setExam("home");
+setExam("modules");
 (function initBanner(){
   const mb=document.getElementById("mapbanner");
   if(state.labelMode==="class"){
